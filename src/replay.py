@@ -11,7 +11,7 @@ import av
 import httpx
 
 from llm_client.base_client import BaseClient
-from llm_client.vllm_client import VLLMClient
+from llm_client.provider import add_provider_args, open_client
 
 
 CHUNK_US = 200_000
@@ -90,13 +90,14 @@ def replay(video: Path, client: BaseClient, output: Path | None = None) -> Path:
 def main():
     parser = argparse.ArgumentParser(description="Predict actions across a recorded game.")
     parser.add_argument("video", type=Path)
+    add_provider_args(parser)
     args = parser.parse_args()
     if not args.video.is_file():
         parser.error(f"Video not found: {args.video}")
     url = os.getenv("FRAMEPILOT_BASE_URL", "http://127.0.0.1:8000/v1")
     try:
-        with httpx.Client(base_url=url, timeout=180) as http:
-            print(replay(args.video, VLLMClient(http)))
+        with open_client(args.provider, args.model, url, trust_env=True) as client:
+            print(replay(args.video, client))
     except httpx.ConnectError as exc:
         sys.exit(f"Cannot connect to vLLM at {url}: {exc}")
 
