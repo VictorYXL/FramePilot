@@ -3,6 +3,7 @@ from ctypes import wintypes as w
 import time
 
 from PIL import ImageGrab
+from actions import ActionChunk
 
 
 user = c.WinDLL("user32", use_last_error=True)
@@ -77,15 +78,14 @@ def key_event(name, down):
     return Input(1, EventData(key=Keyboard(vk=KEYS[name], flags=0 if down else 2)))
 
 
-def execute(action, size, guard, send=emit, sleep=time.sleep):
-    steps = [set(group) for group in action["held_keys"]]
-    unknown = set.union(*steps) - KEYS.keys() - BUTTONS.keys()
+def execute(chunk: ActionChunk, guard, send=emit, sleep=time.sleep):
+    unknown = {key for step in chunk for key in step.held_keys} - KEYS.keys() - BUTTONS.keys()
     if unknown:
         raise ValueError(f"Unsupported keys: {sorted(unknown)}")
-    dx, dy = [round(v*n/1000) for v, n in zip(action["mouse_permille"], size)]
     held = set()
     try:
-        for i, wanted in enumerate(steps):
+        for step in chunk:
+            wanted = set(step.held_keys)
             guard()
             for name in sorted(held-wanted):
                 send(key_event(name, False))
@@ -94,14 +94,13 @@ def execute(action, size, guard, send=emit, sleep=time.sleep):
                 guard()
                 send(key_event(name, True))
                 held.add(name)
-            x, y = (round(v*(i+1)/6)-round(v*i/6) for v in (dx, dy))
-            if x or y:
+            if step.dx or step.dy:
                 guard()
-                send(Input(0, EventData(mouse=Mouse(dx=x, dy=y, flags=1))))
-            if i == 0 and action["scroll_notches"]:
+                send(Input(0, EventData(mouse=Mouse(dx=step.dx, dy=step.dy, flags=1))))
+            if step.scroll_notches:
                 guard()
-                send(Input(0, EventData(mouse=Mouse(data=action["scroll_notches"]*120, flags=0x800))))
-            sleep(0.2/6)
+                send(Input(0, EventData(mouse=Mouse(data=step.scroll_notches*120, flags=0x800))))
+            sleep(step.duration_us/1_000_000)
     finally:
         failures = []
         for name in sorted(held):

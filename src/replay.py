@@ -2,7 +2,6 @@ import argparse
 import io
 import json
 import os
-import re
 import sys
 import time
 from pathlib import Path
@@ -10,26 +9,9 @@ from pathlib import Path
 import av
 import httpx
 
+from gamescaling_policy import CHUNK_US, parse_action
 from llm_client.base_client import BaseClient
 from llm_client.provider import add_provider_args, open_client
-
-
-CHUNK_US = 200_000
-
-
-def parse_action(raw: str) -> dict:
-    match = re.search(r"<\|action_start\|>([^<>]*)<\|action_end\|>", raw)
-    if not match:
-        raise ValueError("Missing or incomplete action block.")
-    mouse, *groups = match[1].split(";")
-    values = [int(value) for value in mouse.split()]
-    if len(values) != 3 or len(groups) != 6:
-        raise ValueError("Expected three mouse values and six key groups.")
-    dx, dy, scroll = values
-    steps = [group.split() for group in groups]
-    if abs(dx) > 1000 or abs(dy) > 1000 or abs(scroll) > 5 or any(len(s) > 4 for s in steps):
-        raise ValueError("Action exceeds GameScaling limits.")
-    return {"mouse_permille": [dx, dy], "scroll_notches": scroll, "held_keys": steps}
 
 
 def decisions(video: Path):

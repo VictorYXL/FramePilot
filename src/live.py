@@ -2,10 +2,11 @@ import argparse
 import io
 import json
 import time
+from dataclasses import asdict
 from pathlib import Path
 
 from llm_client.provider import add_provider_args, open_client
-from replay import parse_action
+from gamescaling_policy import GameScalingPolicy
 from windows_io import capture, execute, find, foreground, key_state, thread_dpi
 
 
@@ -40,6 +41,8 @@ def main():
         print("Input armed in 5 seconds. Focus the target; hold F12 or switch away to stop.", flush=True)
         time.sleep(5)
     with open_client(args.provider, args.model, "http://127.0.0.1:8000/v1", trust_env=False) as client:
+        policy = GameScalingPolicy(client)
+        policy.reset()
         for step in range(args.steps):
             if args.execute:
                 guard()
@@ -51,11 +54,11 @@ def main():
             image.thumbnail((1280, 720))
             image.save(jpeg, format="JPEG", quality=90)
             start = time.perf_counter()
-            action = parse_action(client.predict(jpeg.getvalue()))
+            chunk = policy.act(jpeg.getvalue(), size)
             print(json.dumps(dict(step=step, inference_ms=round((time.perf_counter()-start)*1000),
-                                  action=action)), flush=True)
+                                  steps=[asdict(s) for s in chunk])), flush=True)
             if args.execute:
-                execute(action, size, guard)
+                execute(chunk, guard)
 
 
 if __name__ == "__main__":

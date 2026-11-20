@@ -22,6 +22,9 @@ class VLLMClient(BaseClient):
         self.prompt = prompt
         self.history = deque(maxlen=history_len)
 
+    def reset(self) -> None:
+        self.history.clear()
+
     def predict(self, jpeg: bytes) -> str:
         uri = "data:image/jpeg;base64," + base64.b64encode(jpeg).decode("ascii")
         current = {"role": "user", "content": [

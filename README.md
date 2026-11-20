@@ -41,6 +41,14 @@ and may consume credits. No tools are requested and no previous frames are
 included. The response is parsed with the same action parser as vLLM. The
 default provider remains vLLM and does not require the Copilot SDK.
 
+Both providers currently emit GameScaling text. In live mode,
+`GameScalingPolicy.act(jpeg, window_size)` converts it into an `ActionChunk`:
+each step has a duration in microseconds, held keys/buttons, relative mouse
+units, and scroll notches. The policy spreads the predicted mouse total over
+six steps using the original window size (not the resized model image) and
+places scroll in the first step. Preview prints these steps; the executor
+plays them as supplied. Replay logs retain the original per-mille predictions.
+
 ## Output
 
 `gameplay.actions.jsonl` is written beside the video. Every 200 ms of video
