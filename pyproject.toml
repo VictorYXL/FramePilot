@@ -1,0 +1,6 @@
+[project]
+name = "framepilot"
+version = "0.1.0"
+description = "Predict GameScaling actions from recorded gameplay."
+requires-python = ">=3.12"
+dependencies = ["av>=16", "httpx>=0.27", "pillow>=10"]
